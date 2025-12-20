@@ -15,7 +15,9 @@ export default function App() {
   const [started, setStarted] = useState(false);
   const [holding, setHolding] = useState(false);
   const [charge, setChargeState] = useState(0);
+
   const lastSentCharge = useRef(0);
+  const shakeLevel = useRef(32);
 
   // --- Rive ---
   const { rive, RiveComponent } = useRive({
@@ -44,7 +46,7 @@ export default function App() {
 
   // --- Numbers ---
   const { setValue: setCharge } = useViewModelInstanceNumber("ChargeLevel", vmi);
-  const { value: shakeCount } = useViewModelInstanceNumber("ShakeCount", vmi);
+  const { value: shakeCount } = useViewModelInstanceNumber("ShakeCount", vmi); // فرضاً متغیر شمارش شیک‌ها
 
   // --- Start ---
   const handleTap = () => {
@@ -59,20 +61,16 @@ export default function App() {
     if (!wakeUpFinal) return;
     setHolding(true);
   };
-
-  const handlePointerUp = () => {
-    setHolding(false);
-  };
+  const handlePointerUp = () => setHolding(false);
 
   // --- Charge logic ---
   useEffect(() => {
     if (!wakeUpFinal || !setCharge || !setUserHolding) return;
+
     let intervalId;
 
-    // 🔼 Charging
     if (holding && charge < 100) {
       setUserHolding(true);
-
       intervalId = setInterval(() => {
         setChargeState((prev) => {
           if (prev >= 100) return 100;
@@ -85,16 +83,11 @@ export default function App() {
             setCharge(next);
             navigator.vibrate(5);
           }
-
           return next;
         });
       }, 60);
-    }
-
-    // 🔻 Fast discharge with vibration
-    else if (!holding && charge > 0 && charge < 100) {
+    } else if (!holding && charge > 0 && charge < 100) {
       setUserHolding(false);
-
       intervalId = setInterval(() => {
         setChargeState((prev) => {
           const dropAmount = Math.min(22, prev);
@@ -103,12 +96,9 @@ export default function App() {
           if (next !== lastSentCharge.current) {
             lastSentCharge.current = next;
             setCharge(next);
-
-            // ویبره وابسته به شدت سقوط
             const vibrationStrength = Math.min(30, Math.max(5, dropAmount * 1.2));
             navigator.vibrate(vibrationStrength);
           }
-
           return next;
         });
       }, 40);
@@ -119,21 +109,21 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, [holding, wakeUpFinal, charge, setCharge, setUserHolding]);
 
-  // --- Shake logic based on ShakeCount ---
+  // --- Shake logic ---
   useEffect(() => {
     const handleMotion = (event) => {
       if (!isReadyToShake || wakeUpFinal || !shakeTrigger) return;
-      if (shakeCount === undefined) return;
 
       const acc = event.accelerationIncludingGravity;
       if (!acc) return;
 
       const total = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
 
-      const thresholds = [32, 48, 64];
-      const currentThreshold = thresholds[shakeCount] ?? 64;
+      let threshold = 32;
+      if (shakeCount === 1) threshold = 48;
+      else if (shakeCount === 2) threshold = 64;
 
-      if (total > currentThreshold) {
+      if (total > threshold) {
         shakeTrigger();
         navigator.vibrate(60);
       }
