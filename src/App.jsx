@@ -23,7 +23,7 @@ export default function App() {
     autoplay: true,
     autoBind: true,
     layout: new Layout({
-      fit: Fit.Fill, // تمام صفحه بدون اسکرول
+      fit: Fit.Fill, // تمام صفحه
       alignment: Alignment.Center,
     }),
   });
@@ -33,35 +33,20 @@ export default function App() {
   const vmi = useViewModelInstance(viewModel, { rive });
 
   // --- Triggers ---
-  const { trigger: startTrigger } = useViewModelInstanceTrigger(
-    "StartGooo",
-    vmi
-  );
-  const { trigger: shakeTrigger } = useViewModelInstanceTrigger(
-    "ShakeTrigger",
-    vmi
-  );
+  const { trigger: startTrigger } = useViewModelInstanceTrigger("StartGooo", vmi);
+  const { trigger: shakeTrigger } = useViewModelInstanceTrigger("ShakeTrigger", vmi);
 
   // --- Booleans ---
-  const { value: isReadyToShake } = useViewModelInstanceBoolean(
-    "IsReadyToShake",
-    vmi
-  );
-  const { value: wakeUpFinal } = useViewModelInstanceBoolean(
-    "Wake-Up-Final",
-    vmi
-  );
-  const { setValue: setUserHolding } = useViewModelInstanceBoolean(
-    "UserHolding",
-    vmi
-  );
+  const { value: isReadyToShake } = useViewModelInstanceBoolean("IsReadyToShake", vmi);
+  const { value: wakeUpFinal } = useViewModelInstanceBoolean("Wake-Up-Final", vmi);
+  const { setValue: setUserHolding } = useViewModelInstanceBoolean("UserHolding", vmi);
 
   // --- Numbers ---
-  const { setValue: setCharge } = useViewModelInstanceNumber("chargeLevel", vmi);
+  const { setValue: setCharge } = useViewModelInstanceNumber("ChargeLevel", vmi);
 
   // --- Tap برای شروع ---
   const handleTap = () => {
-    if (started || !startTrigger) return;
+    if (!started || !startTrigger) return;
     console.log("🔥 StartGooo fired");
     startTrigger();
     setStarted(true);
@@ -71,23 +56,24 @@ export default function App() {
   const handlePointerDown = () => setHolding(true);
   const handlePointerUp = () => setHolding(false);
 
-  // --- Update شارژ ---
+  // --- Update شارژ و همگام‌سازی با Data Model ---
   useEffect(() => {
     if (!setCharge || !setUserHolding) return;
-
     let intervalId;
+
     if (holding) {
       setUserHolding(true);
 
       intervalId = setInterval(() => {
         setChargeLevelState((prev) => {
-          const speed = 0.5 + (prev / 100) * 4.5;
-          const next = Math.min(prev + speed, 100);
+          let speed = 0.5 + (prev / 100) * 4.5;
+          let next = Math.min(prev + speed, 100);
+          next = Math.round(next);
 
-          // 🔥 مقداردهی مستقیم به Data Model
+          // 🔹 ارسال مقدار به Data Model
           setCharge(next);
 
-          // ویبره کوتاه برای هر افزایش
+          // 🔹 ویبره کوتاه برای هر افزایش
           if (navigator.vibrate) navigator.vibrate(10);
 
           return next;
@@ -95,14 +81,17 @@ export default function App() {
       }, 50);
     } else {
       setUserHolding(false);
-
       intervalId = setInterval(() => {
         setChargeLevelState((prev) => {
-          const next = Math.max(prev - 7, 0);
+          let next = Math.max(prev - 7, 0);
+          next = Math.round(next);
+
+          // 🔹 ارسال مقدار به Data Model
           setCharge(next);
+
           return next;
-        }, 50);
-      });
+        });
+      }, 50);
     }
 
     return () => clearInterval(intervalId);
@@ -110,7 +99,7 @@ export default function App() {
 
   // --- Shake واقعی موبایل ---
   useEffect(() => {
-    const shakeThresholds = [32, 48, 64]; // مقادیر پله‌ای شیک
+    const shakeThresholds = [32, 48, 64]; // پلاکانی
     let shakeIndex = 0;
 
     const handleMotion = (event) => {
@@ -119,16 +108,15 @@ export default function App() {
       const acc = event.accelerationIncludingGravity;
       if (!acc) return;
       const total = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
-
-      if (total > shakeThresholds[shakeIndex]) {
-        console.log("💨 ShakeTrigger fired!");
+      if (total > shakeThresholds[shakeIndex] || total > 25) {
+        console.log("💨 ShakeTrigger fired by device motion!");
         shakeTrigger();
 
-        // ویبره
+        // ویبره برای شیک
         if (navigator.vibrate) navigator.vibrate(50);
 
-        // افزایش مرحله بعدی
-        if (shakeIndex < shakeThresholds.length - 1) shakeIndex += 1;
+        // حرکت به شیک بعدی
+        if (shakeIndex < shakeThresholds.length - 1) shakeIndex++;
       }
     };
 
@@ -138,7 +126,13 @@ export default function App() {
 
   return (
     <div
-      style={{ width: "100vw", height: "100vh", touchAction: "none" }}
+      style={{
+        width: "100vw",
+        height: "100vh",
+        margin: 0,
+        touchAction: "none",
+        overflow: "hidden",
+      }}
       onPointerDown={(e) => {
         handleTap();
         handlePointerDown();
