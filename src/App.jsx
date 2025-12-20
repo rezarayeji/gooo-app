@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   useRive,
   Layout,
@@ -12,133 +12,156 @@ import {
 } from "@rive-app/react-webgl2";
 
 export default function App() {
-  const [holding, setHolding] = useState(false);
-  const [chargeLevelState, setChargeLevelState] = useState(0);
   const [started, setStarted] = useState(false);
+  const [holding, setHolding] = useState(false);
+  const [charge, setChargeState] = useState(0);
 
-  // --- Rive Setup ---
+  const lastSentCharge = useRef(0);
+  const shakeLevel = useRef(32);
+
+  // --- Rive ---
   const { rive, RiveComponent } = useRive({
-    src: "/gooos-app/assets/gooos-great-quest.riv", // مسیر برای GitHub Pages
+    src: "/gooos-app/assets/gooos-great-quest.riv",
     stateMachines: "State Machine 1",
     autoplay: true,
     autoBind: true,
     layout: new Layout({
-      fit: Fit.Fill,       // کل صفحه بدون اسکرول
+      fit: Fit.Fill,
       alignment: Alignment.Center,
     }),
   });
 
-  // --- View Model ---
+  // --- ViewModel ---
   const viewModel = useViewModel(rive, { name: "View Model 1" });
   const vmi = useViewModelInstance(viewModel, { rive });
 
   // --- Triggers ---
-  const { trigger: startTrigger } = useViewModelInstanceTrigger(
-    "StartGooo",
-    vmi
-  );
-  const { trigger: shakeTrigger } = useViewModelInstanceTrigger(
-    "ShakeTrigger",
-    vmi
-  );
+  const { trigger: startTrigger } =
+    useViewModelInstanceTrigger("StartGooo", vmi);
+  const { trigger: shakeTrigger } =
+    useViewModelInstanceTrigger("ShakeTrigger", vmi);
 
   // --- Booleans ---
-  const { value: isReadyToShake } = useViewModelInstanceBoolean(
-    "IsReadyToShake",
-    vmi
-  );
-  const { value: wakeUpFinal } = useViewModelInstanceBoolean(
-    "Wake-Up-Final",
-    vmi
-  );
-  const { setValue: setUserHolding } = useViewModelInstanceBoolean(
-    "UserHolding",
-    vmi
-  );
+  const { value: isReadyToShake } =
+    useViewModelInstanceBoolean("IsReadyToShake", vmi);
+  const { value: wakeUpFinal } =
+    useViewModelInstanceBoolean("WakeUpFinal", vmi);
+  const { setValue: setUserHolding } =
+    useViewModelInstanceBoolean("UserHolding", vmi);
 
-  // --- Numbers ---
-  const { setValue: setCharge } = useViewModelInstanceNumber(
-    "chargeLevel",
-    vmi
-  );
+  // --- Number ---
+  const { setValue: setCharge } =
+    useViewModelInstanceNumber("ChargeLevel", vmi);
 
-  // --- Tap برای Start ---
+  // --- Start ---
   const handleTap = () => {
-    if (!started || !startTrigger) {
-      console.log("🔥 StartGooo fired");
-      startTrigger();
-      setStarted(true);
-    }
+    if (started || !startTrigger) return;
+    startTrigger();
+    navigator.vibrate(40);
+    setStarted(true);
   };
 
   // --- Hold ---
-  const handlePointerDown = () => setHolding(true);
-  const handlePointerUp = () => setHolding(false);
+  const handlePointerDown = () => {
+    if (!wakeUpFinal) return;
+    setHolding(true);
+  };
 
-  // --- Charge Update ---
+  const handlePointerUp = () => {
+    setHolding(false);
+  };
+
+  // --- Charge logic ---
   useEffect(() => {
-    if (!setCharge || !setUserHolding) return;
+    if (!wakeUpFinal || !setCharge || !setUserHolding) return;
+
     let intervalId;
 
-    if (holding) {
+    // 🔼 CHARGING
+    if (holding && charge < 100) {
       setUserHolding(true);
+
       intervalId = setInterval(() => {
-        setChargeLevelState((prev) => {
-          const speed = 0.5 + (prev / 100) * 4.5;
-          const next = Math.min(prev + speed, 100);
+        setChargeState((prev) => {
+          if (prev >= 100) return 100;
 
-          // 🔥 ارسال مقدار عددی به دیتا مدل (رند به عدد صحیح)
-          setCharge(Math.round(next));
+          const speed = 1 + (prev / 100) * 4;
+          const next = Math.min(Math.round(prev + speed), 100);
 
-          // ویبره کوچک
-          if (navigator.vibrate) navigator.vibrate(5);
+          if (next !== lastSentCharge.current) {
+            lastSentCharge.current = next;
+            setCharge(next);
+            navigator.vibrate(5);
+          }
 
           return next;
         });
-      }, 50);
+      }, 60);
+    }
+
+    // 🔻 FAST DISCHARGE WITH SPEED-BASED VIBRATION
+    else if (!holding && charge > 0 && charge < 100) {
+      setUserHolding(false);
+
+      intervalId = setInterval(() => {
+        setChargeState((prev) => {
+          const dropAmount = Math.min(22, prev);
+          const next = Math.max(prev - dropAmount, 0);
+
+          if (next !== lastSentCharge.current) {
+            lastSentCharge.current = next;
+            setCharge(next);
+
+            // 🔥 ویبره وابسته به شدت سقوط
+            const vibrationStrength = Math.min(
+              30,
+              Math.max(5, dropAmount * 1.2)
+            );
+            navigator.vibrate(vibrationStrength);
+          }
+
+          return next;
+        });
+      }, 40);
     } else {
       setUserHolding(false);
-      intervalId = setInterval(() => {
-        setChargeLevelState((prev) => {
-          const next = Math.max(prev - 7, 0);
-          setCharge(Math.round(next));
-          return next;
-        });
-      }, 50);
     }
 
     return () => clearInterval(intervalId);
-  }, [holding, setCharge, setUserHolding]);
+  }, [holding, wakeUpFinal, charge, setCharge, setUserHolding]);
 
-  // --- Shake واقعی گوشی ---
+  // --- Shake ---
   useEffect(() => {
     const handleMotion = (event) => {
-      if (!shakeTrigger || !isReadyToShake || wakeUpFinal) return;
+      if (!isReadyToShake || wakeUpFinal || !shakeTrigger) return;
 
       const acc = event.accelerationIncludingGravity;
       if (!acc) return;
+
       const total =
         Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
 
-      // Threshold برای Shake
-      if (total > 32) {
-        console.log("💨 ShakeTrigger fired by device motion!");
+      if (total > shakeLevel.current) {
         shakeTrigger();
-        if (navigator.vibrate) navigator.vibrate(50);
+        navigator.vibrate(60);
+
+        if (shakeLevel.current === 32) shakeLevel.current = 48;
+        else if (shakeLevel.current === 48) shakeLevel.current = 64;
       }
     };
+
     window.addEventListener("devicemotion", handleMotion);
-    return () => window.removeEventListener("devicemotion", handleMotion);
-  }, [shakeTrigger, isReadyToShake, wakeUpFinal]);
+    return () =>
+      window.removeEventListener("devicemotion", handleMotion);
+  }, [isReadyToShake, wakeUpFinal, shakeTrigger]);
 
   return (
     <div
       style={{
         width: "100vw",
         height: "100vh",
-        margin: 0,
-        padding: 0,
         overflow: "hidden",
+        margin: 0,
         touchAction: "none",
       }}
       onPointerDown={(e) => {
