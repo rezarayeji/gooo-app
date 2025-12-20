@@ -11,22 +11,20 @@ import {
 } from "@rive-app/react-webgl2";
 
 export default function App() {
-  const [holding, setHoldingState] = useState(false);
+  const [holding, setHolding] = useState(false);
   const [chargeLevel, setChargeLevelState] = useState(0);
   const [started, setStarted] = useState(false);
 
+  // --- بارگذاری Rive ---
   const { rive, RiveComponent } = useRive({
     src: "/src/assets/gooos-great-quest.riv",
     stateMachines: "State Machine 1",
     autoplay: true,
-    layout: new Layout({
-      fit: Fit.Contain,
-      layoutScaleFactor: 1,
-    }),
+    layout: new Layout({ fit: Fit.Contain, layoutScaleFactor: 1 }),
     autoBind: true,
   });
 
-  // --- View Model ---
+  // --- View Model 1 ---
   const viewModel = useViewModel(rive, { name: "View Model 1" });
   const vmi = useViewModelInstance(viewModel, { rive });
 
@@ -34,13 +32,15 @@ export default function App() {
   const { trigger: startTrigger } = useViewModelInstanceTrigger("StartGooo", vmi);
   const { trigger: shakeTrigger } = useViewModelInstanceTrigger("ShakeTrigger", vmi);
 
-  // --- Inputs ---
-  const { setValue: setCharge } = useViewModelInstanceNumber("chargeLevel", vmi);
-  const { setValue: setUserHolding } = useViewModelInstanceBoolean("User-Holding", vmi);
+  // --- Booleans ---
   const { value: isReadyToShake } = useViewModelInstanceBoolean("IsReadyToShake", vmi);
   const { value: wakeUpFinal } = useViewModelInstanceBoolean("Wake-Up-Final", vmi);
+  const { setValue: setUserHolding } = useViewModelInstanceBoolean("UserHolding", vmi);
 
-  // --- Tap برای StartGooo ---
+  // --- Numbers ---
+  const { setValue: setCharge } = useViewModelInstanceNumber("chargeLevel", vmi);
+
+  // --- Tap برای شروع ---
   const handleTap = () => {
     if (started || !startTrigger) return;
     console.log("🔥 StartGooo fired");
@@ -48,54 +48,63 @@ export default function App() {
     setStarted(true);
   };
 
-  // --- نگه داشتن صفحه برای شارژ ---
-  const handlePointerDown = () => setHoldingState(true);
-  const handlePointerUp = () => setHoldingState(false);
+  // --- نگه داشتن صفحه ---
+  const handlePointerDown = () => setHolding(true);
+  const handlePointerUp = () => setHolding(false);
 
-  // --- Update شارژ ---
+  // --- شارژ با شتاب تدریجی و حداکثر 100 ---
   useEffect(() => {
     let id;
-    if (holding && setCharge && setUserHolding) {
+    if (!setCharge || !setUserHolding) return;
+
+    if (chargeLevel >= 100) {
+      // وقتی شارژ به 100 رسید، متوقف کن و مقدار ثابت بماند
+      setChargeLevelState(100);
+      setCharge(100);
+      setUserHolding(false);
+      return;
+    }
+
+    if (holding) {
       setUserHolding(true);
       id = setInterval(() => {
-        setCharge((prev) => {
-          const next = Math.min(prev + 2, 100);
-          setChargeLevelState(next);
+        setChargeLevelState((prev) => {
+          const speed = 0.5 + (prev / 100) * 4.5;
+          const next = Math.min(prev + speed, 100);
+          setCharge(next);
           return next;
         });
       }, 50);
-    } else if (!holding && setCharge && setUserHolding) {
+    } else {
       setUserHolding(false);
       id = setInterval(() => {
-        setCharge((prev) => {
-          const next = Math.max(prev - 5, 0);
-          setChargeLevelState(next);
+        setChargeLevelState((prev) => {
+          const next = Math.max(prev - 7, 0);
+          setCharge(next);
           return next;
         });
       }, 50);
     }
+
     return () => clearInterval(id);
-  }, [holding, setCharge, setUserHolding]);
+  }, [holding, setCharge, setUserHolding, chargeLevel]);
 
   // --- Shake واقعی موبایل ---
   useEffect(() => {
     const handleMotion = (event) => {
-      if (!rive || !shakeTrigger || !isReadyToShake) return;
-      if (!isReadyToShake) return;
+      if (!shakeTrigger || !isReadyToShake || wakeUpFinal) return;
 
       const acc = event.accelerationIncludingGravity;
       if (!acc) return;
-
       const total = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
-      if (total > 25 && !wakeUpFinal) { // حساسیت قابل تنظیم
+      if (total > 25) {
         console.log("💨 ShakeTrigger fired by device motion!");
         shakeTrigger();
       }
     };
-
     window.addEventListener("devicemotion", handleMotion);
     return () => window.removeEventListener("devicemotion", handleMotion);
-  }, [rive, shakeTrigger, isReadyToShake, wakeUpFinal]);
+  }, [shakeTrigger, isReadyToShake, wakeUpFinal]);
 
   return (
     <div
@@ -105,12 +114,6 @@ export default function App() {
         handlePointerDown();
       }}
       onPointerUp={handlePointerUp}
-      onDoubleClick={() => {
-        if (shakeTrigger && isReadyToShake && !wakeUpFinal) {
-          console.log("💨 ShakeTrigger fired by double click!");
-          shakeTrigger();
-        }
-      }}
     >
       <RiveComponent />
     </div>
