@@ -14,7 +14,7 @@ import {
 export default function App() {
   const [started, setStarted] = useState(false);
   const [holding, setHolding] = useState(false);
-  const [charge, setChargeState] = useState(0);
+  const charge = useRef(0); // مقدار واقعی شارژ
 
   const lastSentCharge = useRef(0);
   const shakeLevel = useRef(32);
@@ -36,22 +36,16 @@ export default function App() {
   const vmi = useViewModelInstance(viewModel, { rive });
 
   // --- Triggers ---
-  const { trigger: startTrigger } =
-    useViewModelInstanceTrigger("StartGooo", vmi);
-  const { trigger: shakeTrigger } =
-    useViewModelInstanceTrigger("ShakeTrigger", vmi);
+  const { trigger: startTrigger } = useViewModelInstanceTrigger("StartGooo", vmi);
+  const { trigger: shakeTrigger } = useViewModelInstanceTrigger("ShakeTrigger", vmi);
 
   // --- Booleans ---
-  const { value: isReadyToShake } =
-    useViewModelInstanceBoolean("IsReadyToShake", vmi);
-  const { value: wakeUpFinal } =
-    useViewModelInstanceBoolean("WakeUpFinal", vmi);
-  const { setValue: setUserHolding } =
-    useViewModelInstanceBoolean("UserHolding", vmi);
+  const { value: isReadyToShake } = useViewModelInstanceBoolean("IsReadyToShake", vmi);
+  const { value: wakeUpFinal } = useViewModelInstanceBoolean("WakeUpFinal", vmi);
+  const { setValue: setUserHolding } = useViewModelInstanceBoolean("UserHolding", vmi);
 
   // --- Number ---
-  const { setValue: setCharge } =
-    useViewModelInstanceNumber("ChargeLevel", vmi);
+  const { setValue: setCharge } = useViewModelInstanceNumber("ChargeLevel", vmi);
 
   // --- Start ---
   const handleTap = () => {
@@ -77,58 +71,38 @@ export default function App() {
 
     let intervalId;
 
-    // 🔼 CHARGING
-    if (holding && charge < 100) {
-      setUserHolding(true);
+    intervalId = setInterval(() => {
+      if (holding && charge.current < 100) {
+        setUserHolding(true);
 
-      intervalId = setInterval(() => {
-        setChargeState((prev) => {
-          if (prev >= 100) return 100;
+        const speed = 1 + (charge.current / 100) * 4;
+        charge.current = Math.min(Math.round(charge.current + speed), 100);
 
-          const speed = 1 + (prev / 100) * 4;
-          const next = Math.min(Math.round(prev + speed), 100);
+        if (charge.current !== lastSentCharge.current) {
+          lastSentCharge.current = charge.current;
+          setCharge(charge.current);
+          navigator.vibrate(5);
+        }
+      } else if (!holding && charge.current > 0 && charge.current < 100) {
+        setUserHolding(false);
 
-          if (next !== lastSentCharge.current) {
-            lastSentCharge.current = next;
-            setCharge(next);
-            navigator.vibrate(5);
-          }
+        const dropAmount = Math.min(22, charge.current);
+        charge.current = Math.max(charge.current - dropAmount, 0);
 
-          return next;
-        });
-      }, 60);
-    }
+        if (charge.current !== lastSentCharge.current) {
+          lastSentCharge.current = charge.current;
+          setCharge(charge.current);
 
-    // 🔻 FAST DISCHARGE WITH SPEED-BASED VIBRATION
-    else if (!holding && charge > 0 && charge < 100) {
-      setUserHolding(false);
-
-      intervalId = setInterval(() => {
-        setChargeState((prev) => {
-          const dropAmount = Math.min(22, prev);
-          const next = Math.max(prev - dropAmount, 0);
-
-          if (next !== lastSentCharge.current) {
-            lastSentCharge.current = next;
-            setCharge(next);
-
-            // 🔥 ویبره وابسته به شدت سقوط
-            const vibrationStrength = Math.min(
-              30,
-              Math.max(5, dropAmount * 1.2)
-            );
-            navigator.vibrate(vibrationStrength);
-          }
-
-          return next;
-        });
-      }, 40);
-    } else {
-      setUserHolding(false);
-    }
+          const vibrationStrength = Math.min(30, Math.max(5, dropAmount * 1.2));
+          navigator.vibrate(vibrationStrength);
+        }
+      } else {
+        setUserHolding(false);
+      }
+    }, 60);
 
     return () => clearInterval(intervalId);
-  }, [holding, wakeUpFinal, charge, setCharge, setUserHolding]);
+  }, [holding, wakeUpFinal, setCharge, setUserHolding]);
 
   // --- Shake ---
   useEffect(() => {
@@ -138,8 +112,7 @@ export default function App() {
       const acc = event.accelerationIncludingGravity;
       if (!acc) return;
 
-      const total =
-        Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
+      const total = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
 
       if (total > shakeLevel.current) {
         shakeTrigger();
@@ -151,8 +124,7 @@ export default function App() {
     };
 
     window.addEventListener("devicemotion", handleMotion);
-    return () =>
-      window.removeEventListener("devicemotion", handleMotion);
+    return () => window.removeEventListener("devicemotion", handleMotion);
   }, [isReadyToShake, wakeUpFinal, shakeTrigger]);
 
   return (
