@@ -16,65 +16,82 @@ export default function App() {
   const [chargeLevelState, setChargeLevelState] = useState(0);
   const [started, setStarted] = useState(false);
 
-  // --- بارگذاری Rive ---
+  // --- Rive Setup ---
   const { rive, RiveComponent } = useRive({
-    src: "/gooos-app/assets/gooos-great-quest.riv",
+    src: "/gooos-app/assets/gooos-great-quest.riv", // مسیر برای GitHub Pages
     stateMachines: "State Machine 1",
     autoplay: true,
     autoBind: true,
     layout: new Layout({
-      fit: Fit.Fill, // تمام صفحه
+      fit: Fit.Fill,       // کل صفحه بدون اسکرول
       alignment: Alignment.Center,
     }),
   });
 
-  // --- View Model 1 ---
+  // --- View Model ---
   const viewModel = useViewModel(rive, { name: "View Model 1" });
   const vmi = useViewModelInstance(viewModel, { rive });
 
   // --- Triggers ---
-  const { trigger: startTrigger } = useViewModelInstanceTrigger("StartGooo", vmi);
-  const { trigger: shakeTrigger } = useViewModelInstanceTrigger("ShakeTrigger", vmi);
+  const { trigger: startTrigger } = useViewModelInstanceTrigger(
+    "StartGooo",
+    vmi
+  );
+  const { trigger: shakeTrigger } = useViewModelInstanceTrigger(
+    "ShakeTrigger",
+    vmi
+  );
 
   // --- Booleans ---
-  const { value: isReadyToShake } = useViewModelInstanceBoolean("IsReadyToShake", vmi);
-  const { value: wakeUpFinal } = useViewModelInstanceBoolean("Wake-Up-Final", vmi);
-  const { setValue: setUserHolding } = useViewModelInstanceBoolean("UserHolding", vmi);
+  const { value: isReadyToShake } = useViewModelInstanceBoolean(
+    "IsReadyToShake",
+    vmi
+  );
+  const { value: wakeUpFinal } = useViewModelInstanceBoolean(
+    "Wake-Up-Final",
+    vmi
+  );
+  const { setValue: setUserHolding } = useViewModelInstanceBoolean(
+    "UserHolding",
+    vmi
+  );
 
   // --- Numbers ---
-  const { setValue: setCharge } = useViewModelInstanceNumber("ChargeLevel", vmi);
+  const { setValue: setCharge } = useViewModelInstanceNumber(
+    "chargeLevel",
+    vmi
+  );
 
-  // --- Tap برای شروع ---
+  // --- Tap برای Start ---
   const handleTap = () => {
-    if (!started || !startTrigger) return;
-    console.log("🔥 StartGooo fired");
-    startTrigger();
-    setStarted(true);
+    if (!started || !startTrigger) {
+      console.log("🔥 StartGooo fired");
+      startTrigger();
+      setStarted(true);
+    }
   };
 
-  // --- نگه داشتن صفحه ---
+  // --- Hold ---
   const handlePointerDown = () => setHolding(true);
   const handlePointerUp = () => setHolding(false);
 
-  // --- Update شارژ و همگام‌سازی با Data Model ---
+  // --- Charge Update ---
   useEffect(() => {
     if (!setCharge || !setUserHolding) return;
     let intervalId;
 
     if (holding) {
       setUserHolding(true);
-
       intervalId = setInterval(() => {
         setChargeLevelState((prev) => {
-          let speed = 0.5 + (prev / 100) * 4.5;
-          let next = Math.min(prev + speed, 100);
-          next = Math.round(next);
+          const speed = 0.5 + (prev / 100) * 4.5;
+          const next = Math.min(prev + speed, 100);
 
-          // 🔹 ارسال مقدار به Data Model
-          setCharge(next);
+          // 🔥 ارسال مقدار عددی به دیتا مدل (رند به عدد صحیح)
+          setCharge(Math.round(next));
 
-          // 🔹 ویبره کوتاه برای هر افزایش
-          if (navigator.vibrate) navigator.vibrate(10);
+          // ویبره کوچک
+          if (navigator.vibrate) navigator.vibrate(5);
 
           return next;
         });
@@ -83,12 +100,8 @@ export default function App() {
       setUserHolding(false);
       intervalId = setInterval(() => {
         setChargeLevelState((prev) => {
-          let next = Math.max(prev - 7, 0);
-          next = Math.round(next);
-
-          // 🔹 ارسال مقدار به Data Model
-          setCharge(next);
-
+          const next = Math.max(prev - 7, 0);
+          setCharge(Math.round(next));
           return next;
         });
       }, 50);
@@ -97,29 +110,23 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, [holding, setCharge, setUserHolding]);
 
-  // --- Shake واقعی موبایل ---
+  // --- Shake واقعی گوشی ---
   useEffect(() => {
-    const shakeThresholds = [32, 48, 64]; // پلاکانی
-    let shakeIndex = 0;
-
     const handleMotion = (event) => {
       if (!shakeTrigger || !isReadyToShake || wakeUpFinal) return;
 
       const acc = event.accelerationIncludingGravity;
       if (!acc) return;
-      const total = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
-      if (total > shakeThresholds[shakeIndex] || total > 25) {
+      const total =
+        Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
+
+      // Threshold برای Shake
+      if (total > 32) {
         console.log("💨 ShakeTrigger fired by device motion!");
         shakeTrigger();
-
-        // ویبره برای شیک
         if (navigator.vibrate) navigator.vibrate(50);
-
-        // حرکت به شیک بعدی
-        if (shakeIndex < shakeThresholds.length - 1) shakeIndex++;
       }
     };
-
     window.addEventListener("devicemotion", handleMotion);
     return () => window.removeEventListener("devicemotion", handleMotion);
   }, [shakeTrigger, isReadyToShake, wakeUpFinal]);
@@ -130,8 +137,9 @@ export default function App() {
         width: "100vw",
         height: "100vh",
         margin: 0,
-        touchAction: "none",
+        padding: 0,
         overflow: "hidden",
+        touchAction: "none",
       }}
       onPointerDown={(e) => {
         handleTap();
