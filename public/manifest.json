@@ -1,10 +1,10 @@
 {
   "name": "Gooos App",
   "short_name": "Gooos",
-  "start_url": "/",
+  "start_url": "/gooos-app/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#FFC801",
+  "theme_color": "#FFC801",
   "icons": [
     {
       "src": "/assets/icon-192.png",
