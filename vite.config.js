@@ -1,7 +1,7 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+   import { defineConfig } from "vite";
+   import react from "@vitejs/plugin-react";
 
-export default defineConfig({
-  plugins: [react()],
-  base: "/gooos-app/", // نام دقیق ریپازیتوری شما در GitHub
-});
+   export default defineConfig({
+     plugins: [react()],
+     base: "./", // این برای جلوگیری از خطای آدرس‌دهی عالی است
+   });
