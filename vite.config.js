@@ -3,5 +3,5 @@
 
    export default defineConfig({
      plugins: [react()],
-     base: "./", // این برای جلوگیری از خطای آدرس‌دهی عالی است
+     base: "./", 
    });

@@ -3,13 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-   "homepage": "https://rezarayeji.github.io/gooo-app/",
-   "scripts": {
+  "homepage": "https://rezarayeji.github.io/gooo-app/",
+  "scripts": {
      "dev": "vite",
      "build": "vite build",
      "predeploy": "npm run build",
      "deploy": "gh-pages -d dist"
-   },
+  },
 
   "dependencies": {
     "@rive-app/react-canvas": "^4.25.1",

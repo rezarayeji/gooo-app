@@ -21,7 +21,7 @@ export default function App() {
 
   // --- Rive ---
   const { rive, RiveComponent } = useRive({
-    src: "/gooos-app/assets/gooos-great-quest.riv",
+    src: "assets/gooos-great-quest.riv",
     stateMachines: "State Machine 1",
     autoplay: true,
     autoBind: true,

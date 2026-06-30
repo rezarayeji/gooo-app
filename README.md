@@ -6,6 +6,12 @@ Built with **React**, **Vite**, and **Rive (State Machines)**.
 
 ---
 
+## 🔗 Live Demo & Preview
+- **🚀 [Live Demo (GitHub Pages)](https://rezarayeji.github.io/gooo-app/)**
+- **🎬 [Watch Demo Video](./public/assets/demo.mp4)**
+
+---
+
 ## 💡 The Concept: "Emotional Re-engagement"
 
 Traditional apps use passive notifications to bring users back. **Goo** takes a different approach:
@@ -19,10 +25,10 @@ Traditional apps use passive notifications to bring users back. **Goo** takes a 
 
 Goo's behavior is entirely driven by a complex **Rive State Machine**:
 
-1.  **Awakening (Shake):** When the user first enters, Goo is in `Sleeping Snooze`. Using mobile accelerometer data (simulated or real), the user must **Shake** the device (triggering `shakeTrigger`) to wake him up.
-2.  **Power Up (Hold):** Once awake, the user must **Long-Press/Hold**. This increments the `chargeLevel` (0-100), visually filling the character's energy.
+1.  **Awakening (Shake):** When the user first enters, Goo is in `Sleeping Snooze`. The user must **Shake** the device (triggering `shakeTrigger`) to wake him up.
+2.  **Power Up (Hold):** Once awake, the user must **Long-Press/Hold**. This increments the `chargeLevel` (0-100), visually filling the character's energy through dynamic animations.
 3.  **The Launch (Swipe):** After reaching 100% (`isScharched`), Goo enters the ready state. A **Swipe-Up** gesture triggers the flight animation, where the character "jumps" back into the app's ecosystem.
-4.  **Dynamic Progression:** During flight, Goo displays dynamic skill badges (Math, Art, Chess, Music) using **Live Data Binding** to reflect the user's actual progress.
+4.  **Dynamic Progression:** During flight, Goo displays dynamic skill badges (Math, Art, Chess, Music) using **Live Data Binding** to reflect the user's actual progress levels.
 
 ---
 
@@ -41,18 +47,21 @@ The character's logic is encapsulated within a Rive file, controlled via the fol
 | **Boolean** | `isDragging` | Real-time feedback for the swipe/launch gesture. |
 
 ### Tech Stack
-- **Framework:** React + Vite (Optimized for HMR and performance).
+- **Framework:** React + Vite (Optimized for performance).
 - **Animation:** [Rive](https://rive.app/) (State Machines & WebGL2 renderer).
-- **State Management:** React Hooks (useState/useEffect) synchronized with Rive's `StateMachineInput`.
+- **Deployment:** GitHub Pages.
 
 ---
 
 ## 📂 Project Architecture
 ```text
-├── assets/             # Documentation visuals & demo media
-├── public/             # Static assets (Goo.riv)
+├── public/
+│   ├── assets/         # Rive file (.riv), demo video, and icons
+│   ├── manifest.json   # PWA Metadata
+│   └── vite.svg
 ├── src/
-│   ├── components/     # GooCharacter component & Rive wrappers
-│   ├── App.jsx         # Main interaction logic & state bridging
-│   └── main.jsx        # Entry point
+│   ├── App.jsx         # Main interaction logic & Rive State Machine bridging
+│   ├── index.css       # Layout and Goo's background styling
+│   └── main.jsx        # App entry point
+├── vite.config.js      # Base path configuration for deployment
 └── README.md
