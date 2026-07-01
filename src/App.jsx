@@ -22,7 +22,7 @@ export default function App() {
   // --- Rive ---
   const { rive, RiveComponent } = useRive({
     src: "assets/gooos-great-quest.riv",
-    stateMachines: "State Machine 1",
+    stateMachines: "StateMachine1",
     autoplay: true,
     autoBind: true,
     layout: new Layout({
@@ -32,7 +32,7 @@ export default function App() {
   });
 
   // --- ViewModel ---
-  const viewModel = useViewModel(rive, { name: "View Model 1" });
+  const viewModel = useViewModel(rive, { name: "ViewModel1" });
   const vmi = useViewModelInstance(viewModel, { rive });
 
   // --- Triggers ---
