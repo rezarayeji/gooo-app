@@ -15,9 +15,9 @@ export default function App() {
   const [started, setStarted] = useState(false);
   const [holding, setHolding] = useState(false);
   const [charge, setChargeState] = useState(0);
+  const [isGameFinished, setIsGameFinished] = useState(false);
 
   const lastSentCharge = useRef(0);
-  const shakeLevel = useRef(32);
 
   // --- Rive ---
   const { rive, RiveComponent } = useRive({
@@ -25,47 +25,67 @@ export default function App() {
     stateMachines: "State Machine 1",
     autoplay: true,
     autoBind: true,
+    // گوش دادن به رویداد iSEnding برای توقف لوپ‌ها و ذخیره پرفرمنس
+    onRiveEvent: (event) => {
+      if (event.data && event.data.name === "iSEnding") {
+        console.log("iSEnding triggered. Freezing Rive loop for performance.");
+        setIsGameFinished(true);
+      }
+    },
     layout: new Layout({
       fit: Fit.Fill,
       alignment: Alignment.Center,
     }),
   });
 
-  // --- ViewModel (مطابق ViewModel1 در عکس سوم) ---
+  // --- ViewModel (مطابق ViewModel1 در Rive) ---
   const viewModel = useViewModel(rive, { name: "ViewModel1" });
   const vmi = useViewModelInstance(viewModel, { rive });
 
-  // --- Triggers (اصلاح حروف بزرگ به کوچک مطابق عکس) ---
+  // --- Triggers ---
   const { trigger: startTrigger } = useViewModelInstanceTrigger("startGooo", vmi);
   const { trigger: shakeTrigger } = useViewModelInstanceTrigger("shakeTrigger", vmi);
 
-  // --- Booleans (اصلاح حروف بزرگ به کوچک) ---
-  const { value: isReadyToShake } = useViewModelInstanceBoolean("isReadyToShake", vmi); // در صورت نیاز مطمئن شو در Rive همین نام است
+  // --- Booleans ---
+  const { value: isReadyToShake } = useViewModelInstanceBoolean("isReadyToShake", vmi);
   const { value: wakeUpFinal } = useViewModelInstanceBoolean("wakeUpFinal", vmi);
   const { setValue: setUserHolding } = useViewModelInstanceBoolean("userHolding", vmi);
 
-  // --- Numbers (اصلاح حروف بزرگ به کوچک) ---
+  // --- Numbers ---
   const { setValue: setCharge } = useViewModelInstanceNumber("chargeLevel", vmi);
   const { value: shakeCount } = useViewModelInstanceNumber("shakeCount", vmi);
 
-  // --- Start ---
+  // --- Start Game / Request Fullscreen ---
   const handleTap = () => {
+    // تلاش برای تمام‌صفحه کردن مرورگر در اولین تپ کاربر
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch((err) => console.log("Fullscreen request deferred: ", err));
+    }
+
     if (started || !startTrigger) return;
     startTrigger();
     if (navigator.vibrate) navigator.vibrate(40);
     setStarted(true);
   };
 
-  // --- Hold ---
+  // --- Hold Logic ---
   const handlePointerDown = () => {
     if (!wakeUpFinal) return;
     setHolding(true);
   };
   const handlePointerUp = () => setHolding(false);
 
-  // --- Charge logic ---
+  // --- Effect 1: Pause Rive Engine on End ---
   useEffect(() => {
-    if (!wakeUpFinal || !setCharge || !setUserHolding) return;
+    if (isGameFinished && rive) {
+      rive.pause(); // متوقف کردن موثر تمام انیمیشن‌ها و رندرهای پشت سر هم
+    }
+  }, [isGameFinished, rive]);
+
+  // --- Effect 2: Charge Logic ---
+  useEffect(() => {
+    if (!wakeUpFinal || !setCharge || !setUserHolding || isGameFinished) return;
 
     let intervalId;
 
@@ -107,12 +127,12 @@ export default function App() {
     }
 
     return () => clearInterval(intervalId);
-  }, [holding, wakeUpFinal, charge, setCharge, setUserHolding]);
+  }, [holding, wakeUpFinal, charge, setCharge, setUserHolding, isGameFinished]);
 
-  // --- Shake logic ---
+  // --- Effect 3: Shake Logic ---
   useEffect(() => {
     const handleMotion = (event) => {
-      if (!isReadyToShake || wakeUpFinal || !shakeTrigger) return;
+      if (!isReadyToShake || wakeUpFinal || !shakeTrigger || isGameFinished) return;
 
       const acc = event.accelerationIncludingGravity;
       if (!acc) return;
@@ -131,13 +151,14 @@ export default function App() {
 
     window.addEventListener("devicemotion", handleMotion);
     return () => window.removeEventListener("devicemotion", handleMotion);
-  }, [isReadyToShake, wakeUpFinal, shakeTrigger, shakeCount]);
+  }, [isReadyToShake, wakeUpFinal, shakeTrigger, shakeCount, isGameFinished]);
 
   return (
-    <div className="app"
+    <div
+      className="app"
       style={{
         width: "100vw",
-        height: "100vh",
+        height: "100dvh", // استفاده از dvh برای رفع مشکل نوار آدرس موبایل
         overflow: "hidden",
         margin: 0,
         touchAction: "none",
