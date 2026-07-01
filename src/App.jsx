@@ -22,7 +22,7 @@ export default function App() {
   // --- Rive ---
   const { rive, RiveComponent } = useRive({
     src: "assets/gooos-great-quest.riv",
-    stateMachines: "StateMachine1",
+    stateMachines: "State Machine 1",
     autoplay: true,
     autoBind: true,
     layout: new Layout({
@@ -31,28 +31,28 @@ export default function App() {
     }),
   });
 
-  // --- ViewModel ---
+  // --- ViewModel (مطابق ViewModel1 در عکس سوم) ---
   const viewModel = useViewModel(rive, { name: "ViewModel1" });
   const vmi = useViewModelInstance(viewModel, { rive });
 
-  // --- Triggers ---
-  const { trigger: startTrigger } = useViewModelInstanceTrigger("StartGooo", vmi);
-  const { trigger: shakeTrigger } = useViewModelInstanceTrigger("ShakeTrigger", vmi);
+  // --- Triggers (اصلاح حروف بزرگ به کوچک مطابق عکس) ---
+  const { trigger: startTrigger } = useViewModelInstanceTrigger("startGooo", vmi);
+  const { trigger: shakeTrigger } = useViewModelInstanceTrigger("shakeTrigger", vmi);
 
-  // --- Booleans ---
-  const { value: isReadyToShake } = useViewModelInstanceBoolean("IsReadyToShake", vmi);
-  const { value: wakeUpFinal } = useViewModelInstanceBoolean("WakeUpFinal", vmi);
-  const { setValue: setUserHolding } = useViewModelInstanceBoolean("UserHolding", vmi);
+  // --- Booleans (اصلاح حروف بزرگ به کوچک) ---
+  const { value: isReadyToShake } = useViewModelInstanceBoolean("isReadyToShake", vmi); // در صورت نیاز مطمئن شو در Rive همین نام است
+  const { value: wakeUpFinal } = useViewModelInstanceBoolean("wakeUpFinal", vmi);
+  const { setValue: setUserHolding } = useViewModelInstanceBoolean("userHolding", vmi);
 
-  // --- Numbers ---
-  const { setValue: setCharge } = useViewModelInstanceNumber("ChargeLevel", vmi);
-  const { value: shakeCount } = useViewModelInstanceNumber("ShakeCount", vmi); // فرضاً متغیر شمارش شیک‌ها
+  // --- Numbers (اصلاح حروف بزرگ به کوچک) ---
+  const { setValue: setCharge } = useViewModelInstanceNumber("chargeLevel", vmi);
+  const { value: shakeCount } = useViewModelInstanceNumber("shakeCount", vmi);
 
   // --- Start ---
   const handleTap = () => {
     if (started || !startTrigger) return;
     startTrigger();
-    navigator.vibrate(40);
+    if (navigator.vibrate) navigator.vibrate(40);
     setStarted(true);
   };
 
@@ -81,7 +81,7 @@ export default function App() {
           if (next !== lastSentCharge.current) {
             lastSentCharge.current = next;
             setCharge(next);
-            navigator.vibrate(5);
+            if (navigator.vibrate) navigator.vibrate(5);
           }
           return next;
         });
@@ -97,7 +97,7 @@ export default function App() {
             lastSentCharge.current = next;
             setCharge(next);
             const vibrationStrength = Math.min(30, Math.max(5, dropAmount * 1.2));
-            navigator.vibrate(vibrationStrength);
+            if (navigator.vibrate) navigator.vibrate(vibrationStrength);
           }
           return next;
         });
@@ -125,7 +125,7 @@ export default function App() {
 
       if (total > threshold) {
         shakeTrigger();
-        navigator.vibrate(60);
+        if (navigator.vibrate) navigator.vibrate(60);
       }
     };
 
