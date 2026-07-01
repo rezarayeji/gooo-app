@@ -1,10 +1,13 @@
 {
-  "name": "Gooos App",
-  "short_name": "Gooos",
-  "start_url": "/gooos-app/",
-  "display": "standalone",
-  "background_color": "#FFC801",
-  "theme_color": "#FFC801",
+  "name": "Goo - Interactive Recovery Character",
+  "short_name": "Goo",
+  "description": "An interactive recovery character for educational apps.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "fullscreen",
+  "background_color": "#0b0f1a",
+  "theme_color": "#0b0f1a",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/assets/icon-192.png",

@@ -134,7 +134,7 @@ export default function App() {
   }, [isReadyToShake, wakeUpFinal, shakeTrigger, shakeCount]);
 
   return (
-    <div
+    <div className="app"
       style={{
         width: "100vw",
         height: "100vh",
